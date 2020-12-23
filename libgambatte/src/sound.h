@@ -85,6 +85,8 @@ private:
 	unsigned long lastUpdate_;
 	unsigned long soVol_;
 	unsigned long soChVol_[4];
+	unsigned long soChVolPercent_[4];
+	unsigned soNr50_;
 	uint_least32_t rsum_;
 	bool enabled_;
 

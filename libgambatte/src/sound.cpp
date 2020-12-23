@@ -48,14 +48,19 @@ namespace gambatte
       ,  bufferPos_(0)
       ,  lastUpdate_(0)
       ,  soVol_(0)
+      ,  soNr50_(0)
       ,  rsum_(0x8000) // initialize to 0x8000 to prevent borrows from high word, xor away later
       ,  enabled_(false)
    {
        // init as full volume
-       setSoChanVolume(100, 0);
-       setSoChanVolume(100, 1);
-       setSoChanVolume(100, 2);
-       setSoChanVolume(100, 3);
+       soChVolPercent_[0] = 100;
+       soChVolPercent_[1] = 100;
+       soChVolPercent_[2] = 100;
+       soChVolPercent_[3] = 100;
+       soChVol_[0] = 0;
+       soChVol_[1] = 0;
+       soChVol_[2] = 0;
+       soChVol_[3] = 0;
    }
 
    void PSG::init(const bool cgb)
@@ -104,26 +109,10 @@ namespace gambatte
 
       std::memset(buf, 0, cycles * sizeof(uint_least32_t));
       
-      /* apply volume scaling if set by the user */
-      if (soChVol_[0]<10)
-        ch1_.update(buf, ((uint_fast64_t)0x1999999A * soChVol_[0] * soVol_) >> 32, cycles);
-      else
-        ch1_.update(buf, soVol_, cycles);
-
-      if (soChVol_[1]<10)  
-        ch2_.update(buf, ((uint_fast64_t)0x1999999A * soChVol_[1] * soVol_) >> 32, cycles);
-      else
-        ch2_.update(buf, soVol_, cycles);
-
-      if (soChVol_[2]<10)
-        ch3_.update(buf, ((uint_fast64_t)0x1999999A * soChVol_[2] * soVol_) >> 32, cycles);
-      else
-        ch3_.update(buf, soVol_, cycles);
-      
-      if (soChVol_[3]<10)
-        ch4_.update(buf, ((uint_fast64_t)0x1999999A * soChVol_[3] * soVol_) >> 32, cycles);
-      else
-        ch4_.update(buf, soVol_, cycles);
+      if (soChVolPercent_[0]>0) ch1_.update(buf, soChVol_[0], cycles);
+      if (soChVolPercent_[1]>0) ch2_.update(buf, soChVol_[1], cycles);
+      if (soChVolPercent_[2]>0) ch3_.update(buf, soChVol_[2], cycles);
+      if (soChVolPercent_[3]>0) ch4_.update(buf, soChVol_[3], cycles);
    }
 
    void PSG::generateSamples(unsigned long const cycleCounter, bool const doubleSpeed)
@@ -201,6 +190,38 @@ namespace gambatte
    {
       soVol_ = (((nr50      & 0x7) + 1) * so1Mul 
             +  ((nr50 >> 4 & 0x7) + 1) * so2Mul) * 64;
+    
+      soNr50_ = nr50;
+      
+      /* updates individual channels volume */
+      unsigned nr50scaled = nr50;
+      if (soChVolPercent_[0]<100) {
+          nr50scaled = nr50 / 100 * soChVolPercent_[0];
+          soChVol_[0] = (((nr50scaled & 0x7) + 1) * so1Mul + ((nr50scaled >> 4 & 0x7) + 1) * so2Mul) * 64;
+      }
+      else
+          soChVol_[0] = soVol_;
+      
+      if (soChVolPercent_[1]<100) {
+          nr50scaled = nr50 / 100 * soChVolPercent_[1];
+          soChVol_[1] = (((nr50scaled & 0x7) + 1) * so1Mul + ((nr50scaled >> 4 & 0x7) + 1) * so2Mul) * 64;
+      }
+      else
+          soChVol_[1] = soVol_;
+          
+      if (soChVolPercent_[2]<100) {
+          nr50scaled = nr50 / 100 * soChVolPercent_[2];
+          soChVol_[2] = (((nr50scaled & 0x7) + 1) * so1Mul + ((nr50scaled >> 4 & 0x7) + 1) * so2Mul) * 64;
+      }
+      else
+          soChVol_[2] = soVol_;
+          
+      if (soChVolPercent_[3]<100) {
+          nr50scaled = nr50 / 100 * soChVolPercent_[3];
+          soChVol_[3] = (((nr50scaled & 0x7) + 1) * so1Mul + ((nr50scaled >> 4 & 0x7) + 1) * so2Mul) * 64;
+      }
+      else
+          soChVol_[3] = soVol_;
    }
    
    void PSG::setSoChanVolume(const unsigned percent, const unsigned ch)
@@ -208,7 +229,9 @@ namespace gambatte
       if( ch > 3 || percent > 100 )
         return; // invalid arg
         
-      soChVol_[ch] = int(percent / 10);
+      soChVolPercent_[ch] = percent;
+      
+      setSoVolume(soNr50_);
    }
 
    void PSG::mapSo(const unsigned nr51)
