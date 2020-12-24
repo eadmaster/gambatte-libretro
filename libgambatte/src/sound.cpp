@@ -186,6 +186,8 @@ namespace gambatte
    static const unsigned long so2Mul = 0x00000001;
 #endif
 
+#include <stdlib.h>
+#include <stdio.h>
    void PSG::setSoVolume(const unsigned nr50)
    {
       soVol_ = (((nr50      & 0x7) + 1) * so1Mul 
@@ -193,35 +195,18 @@ namespace gambatte
     
       soNr50_ = nr50;
       
-      /* updates individual channels volume */
-      unsigned nr50scaled = nr50;
-      if (soChVolPercent_[0]<100) {
-          nr50scaled = nr50 / 100 * soChVolPercent_[0];
-          soChVol_[0] = (((nr50scaled & 0x7) + 1) * so1Mul + ((nr50scaled >> 4 & 0x7) + 1) * so2Mul) * 64;
+      /* update individual channels volume */
+      unsigned long nr50scaled = nr50;
+      for(int i=0; i<4; i++)
+      {
+          if (soChVolPercent_[i]<100) {
+              nr50scaled = nr50 * soChVolPercent_[i] / 100;
+              //printf("%u\t%u\n", nr50, nr50scaled);
+              soChVol_[i] = (((nr50scaled & 0x7) + 1) * so1Mul + ((nr50scaled >> 4 & 0x7) + 1) * so2Mul) * 64;
+          }
+          else
+              soChVol_[i] = soVol_;
       }
-      else
-          soChVol_[0] = soVol_;
-      
-      if (soChVolPercent_[1]<100) {
-          nr50scaled = nr50 / 100 * soChVolPercent_[1];
-          soChVol_[1] = (((nr50scaled & 0x7) + 1) * so1Mul + ((nr50scaled >> 4 & 0x7) + 1) * so2Mul) * 64;
-      }
-      else
-          soChVol_[1] = soVol_;
-          
-      if (soChVolPercent_[2]<100) {
-          nr50scaled = nr50 / 100 * soChVolPercent_[2];
-          soChVol_[2] = (((nr50scaled & 0x7) + 1) * so1Mul + ((nr50scaled >> 4 & 0x7) + 1) * so2Mul) * 64;
-      }
-      else
-          soChVol_[2] = soVol_;
-          
-      if (soChVolPercent_[3]<100) {
-          nr50scaled = nr50 / 100 * soChVolPercent_[3];
-          soChVol_[3] = (((nr50scaled & 0x7) + 1) * so1Mul + ((nr50scaled >> 4 & 0x7) + 1) * so2Mul) * 64;
-      }
-      else
-          soChVol_[3] = soVol_;
    }
    
    void PSG::setSoChanVolume(const unsigned percent, const unsigned ch)
